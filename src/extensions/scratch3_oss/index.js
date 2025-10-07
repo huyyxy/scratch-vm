@@ -61,7 +61,7 @@ class Scratch3OSSBlocks {
 
     /**
      * OSS configuration
-     * @type {Object}
+     * @type {object}
      * @private
      */
     this._ossConfig = {
@@ -92,12 +92,12 @@ class Scratch3OSSBlocks {
       blocks: [
         {
           opcode: 'uploadToOSS',
-          blockType: BlockType.COMMAND,
+          blockType: BlockType.REPORTER,
           text: formatMessage({
             id: 'oss.uploadToOSS',
             default: '上传到OSS [REGION] [ACCESS_KEY_ID] [ACCESS_KEY_SECRET] ' +
               '[BUCKET] [OBJECT_KEY] [BASE64_DATA]',
-            description: 'Upload base64 data to OSS'
+            description: 'Upload base64 data to OSS and return URL'
           }),
           arguments: {
             REGION: {
@@ -135,8 +135,9 @@ class Scratch3OSSBlocks {
   /**
    * Upload base64 data to OSS using direct HTTP request
    * @param {object} args - the arguments
+   * @return {Promise<string>} Promise that resolves to the uploaded file URL
    */
-  uploadToOSS(args) {
+  async uploadToOSS(args) {
     const region = Cast.toString(args.REGION);
     const accessKeyId = Cast.toString(args.ACCESS_KEY_ID);
     const accessKeySecret = Cast.toString(args.ACCESS_KEY_SECRET);
@@ -151,17 +152,16 @@ class Scratch3OSSBlocks {
       const dataBuffer = this._base64ToBuffer(base64Data);
 
       // 使用直接HTTP请求上传到OSS
-      this._uploadToOSSWithHTTP(region, accessKeyId, accessKeySecret, bucket, objectKey, dataBuffer)
-        .catch(error => {
-          this._uploadStatus = `上传失败：${error.message}`;
-          console.error('OSS上传错误:', error);
-        });
+      const result = await this._uploadToOSSWithHTTP(
+        region, accessKeyId, accessKeySecret, bucket, objectKey, dataBuffer
+      );
+      return result.url;
     } catch (error) {
       this._uploadStatus = `错误：${error.message}`;
       console.error('OSS配置错误:', error);
+      throw error;
     }
   }
-
 
   /**
    * Upload to OSS using ali-oss SDK
@@ -171,6 +171,7 @@ class Scratch3OSSBlocks {
    * @param {string} bucket - Bucket name
    * @param {string} objectKey - Object key
    * @param {Buffer} dataBuffer - Data to upload
+   * @return {Promise<object>} Promise that resolves to the upload result with URL
    * @private
    */
   async _uploadToOSSWithHTTP(region, accessKeyId, accessKeySecret, bucket, objectKey, dataBuffer) {
@@ -197,9 +198,18 @@ class Scratch3OSSBlocks {
       if (result && result.res && result.res.status === 200) {
         this._uploadStatus = '上传成功';
         console.log('OSS上传成功:', result);
-      } else {
-        throw new Error(`上传失败，状态码: ${result.res ? result.res.status : 'unknown'}`);
+
+        // 构建完整的URL
+        const url = `https://${bucket}.${region}.aliyuncs.com/${objectKey}`;
+
+        // 返回包含URL的结果对象
+        return {
+          name: objectKey,
+          url: url,
+          res: result.res
+        };
       }
+      throw new Error(`上传失败，状态码: ${result.res ? result.res.status : 'unknown'}`);
     } catch (error) {
       // 处理不同类型的错误
       if (error.code) {
@@ -229,10 +239,9 @@ class Scratch3OSSBlocks {
       }
 
       console.error('OSS上传错误:', error);
+      throw error;
     }
   }
-
-
 
   /**
    * Convert base64 data to buffer
