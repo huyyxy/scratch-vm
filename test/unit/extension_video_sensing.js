@@ -1,10 +1,10 @@
-const {createReadStream} = require('fs');
-const {join} = require('path');
+const { createReadStream } = require('fs');
+const { join } = require('path');
 
-const {PNG} = require('pngjs');
-const {test} = require('tap');
+const { PNG } = require('pngjs');
+const { test } = require('tap');
 
-const {wrapClamp} = require('../../src/util/math-util');
+const { wrapClamp } = require('../../src/util/math-util');
 
 const VideoSensing = require('../../src/extensions/scratch3_video_sensing/index.js');
 const VideoMotion = require('../../src/extensions/scratch3_video_sensing/library.js');
@@ -87,9 +87,9 @@ const isNearAngle = (actual, expect, optMargin = 10) => (
 // A fake scratch-render drawable that will be used by VideoMotion to restrain
 // the area considered for motion detection in VideoMotion.getLocalMotion
 const fakeDrawable = {
-    updateCPURenderAttributes () {}, // no-op, since isTouching always returns true
+    updateCPURenderAttributes() { }, // no-op, since isTouching always returns true
 
-    getFastBounds () {
+    getFastBounds() {
         return {
             left: -120,
             top: 60,
@@ -98,7 +98,7 @@ const fakeDrawable = {
         };
     },
 
-    isTouching () {
+    isTouching() {
         return true;
     }
 };
@@ -116,10 +116,26 @@ const fakeMotionState = {
 const fakeTarget = {
     drawableID: 0,
 
-    getCustomState () {
+    getCustomState() {
         return fakeMotionState;
     },
-    setCustomState () {}
+    setCustomState() { }
+};
+
+const fakeVideo = {
+    videoReady: true,
+    getFrame({ format }) {
+        if (format === 'canvas') {
+            // Create a mock canvas for testing
+            const canvas = {
+                toDataURL(type) {
+                    return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+                }
+            };
+            return canvas;
+        }
+        return null;
+    }
 };
 
 const fakeRuntime = {
@@ -127,7 +143,9 @@ const fakeRuntime = {
 
     // Without defined devices, VideoSensing will not try to start sampling from
     // a video source.
-    ioDevices: null,
+    ioDevices: {
+        video: fakeVideo
+    },
 
     renderer: {
         _allDrawables: [
@@ -251,7 +269,7 @@ test('detect motionDirection between frames', t => {
             // Add both frames of a pair and check if the motionDirection is near the
             // expected angle.
             let index = 0;
-            for (const {frames: [frame1, frame2], direction} of framePairs) {
+            for (const { frames: [frame1, frame2], direction } of framePairs) {
                 detect.addFrame(frame1);
                 detect.addFrame(frame2);
 
@@ -308,7 +326,7 @@ test('detect local motionDirection between frames', t => {
             // Add both frames of a pair and check if the local motionDirection is near
             // the expected angle.
             let index = 0;
-            for (const {frames: [frame1, frame2], direction} of framePairs) {
+            for (const { frames: [frame1, frame2], direction } of framePairs) {
                 detect.addFrame(frame1);
                 detect.addFrame(frame2);
 
@@ -408,4 +426,54 @@ test('whenMotionGreaterThan returns true if local motion meets target', t => {
 
             t.end();
         });
+});
+
+test('capturePhoto returns base64 data URL when video is ready', t => {
+    t.plan(2);
+
+    const sensing = new VideoSensing(fakeRuntime);
+
+    const photo = sensing.capturePhoto();
+
+    t.ok(
+        typeof photo === 'string',
+        'capturePhoto returns a string'
+    );
+
+    t.ok(
+        photo.startsWith('data:image/png;base64,'),
+        'capturePhoto returns a valid data URL'
+    );
+
+    t.end();
+});
+
+test('capturePhoto returns empty string when video is not ready', t => {
+    t.plan(1);
+
+    // Create runtime with video not ready
+    const fakeRuntimeNoVideo = {
+        targets: [fakeTarget],
+        ioDevices: {
+            video: {
+                videoReady: false,
+                getFrame() { return null; }
+            }
+        },
+        renderer: {
+            _allDrawables: [fakeDrawable]
+        }
+    };
+
+    const sensing = new VideoSensing(fakeRuntimeNoVideo);
+
+    const photo = sensing.capturePhoto();
+
+    t.equal(
+        photo,
+        '',
+        'capturePhoto returns empty string when video is not ready'
+    );
+
+    t.end();
 });

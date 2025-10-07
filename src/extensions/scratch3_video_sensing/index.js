@@ -6,6 +6,8 @@ const Clone = require('../../util/clone');
 const Cast = require('../../util/cast');
 const formatMessage = require('format-message');
 const Video = require('../../io/video');
+const fs = require('fs');
+const path = require('path');
 
 const VideoMotion = require('./library');
 
@@ -66,12 +68,25 @@ const VideoState = {
 };
 
 /**
+ * Generate a short UUID-like string
+ * @returns {string} A short random string (8 characters)
+ */
+const generateShortUUID = function () {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < 8; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+};
+
+/**
  * Class for the motion-related blocks in Scratch 3.0
  * @param {Runtime} runtime - the runtime instantiating this block package.
  * @constructor
  */
 class Scratch3VideoSensingBlocks {
-    constructor (runtime) {
+    constructor(runtime) {
         /**
          * The runtime instantiating this block package.
          * @type {Runtime}
@@ -116,7 +131,7 @@ class Scratch3VideoSensingBlocks {
      * is analyzed.
      * @type {number}
      */
-    static get INTERVAL () {
+    static get INTERVAL() {
         return 33;
     }
 
@@ -125,7 +140,7 @@ class Scratch3VideoSensingBlocks {
      * sample canvas.
      * @type {Array.<number>}
      */
-    static get DIMENSIONS () {
+    static get DIMENSIONS() {
         return [480, 360];
     }
 
@@ -133,7 +148,7 @@ class Scratch3VideoSensingBlocks {
      * The key to load & store a target's motion-related state.
      * @type {string}
      */
-    static get STATE_KEY () {
+    static get STATE_KEY() {
         return 'Scratch.videoSensing';
     }
 
@@ -141,7 +156,7 @@ class Scratch3VideoSensingBlocks {
      * The default motion-related state, to be used when a target has no existing motion state.
      * @type {MotionState}
      */
-    static get DEFAULT_MOTION_STATE () {
+    static get DEFAULT_MOTION_STATE() {
         return {
             motionFrameNumber: 0,
             motionAmount: 0,
@@ -154,7 +169,7 @@ class Scratch3VideoSensingBlocks {
      * accessible by any object connected to the virtual machine.
      * @type {number}
      */
-    get globalVideoTransparency () {
+    get globalVideoTransparency() {
         const stage = this.runtime.getTargetForStage();
         if (stage) {
             return stage.videoTransparency;
@@ -162,7 +177,7 @@ class Scratch3VideoSensingBlocks {
         return 50;
     }
 
-    set globalVideoTransparency (transparency) {
+    set globalVideoTransparency(transparency) {
         const stage = this.runtime.getTargetForStage();
         if (stage) {
             stage.videoTransparency = transparency;
@@ -174,7 +189,7 @@ class Scratch3VideoSensingBlocks {
      * object connected to the virtual machine.
      * @type {number}
      */
-    get globalVideoState () {
+    get globalVideoState() {
         const stage = this.runtime.getTargetForStage();
         if (stage) {
             return stage.videoState;
@@ -185,7 +200,7 @@ class Scratch3VideoSensingBlocks {
         return VideoState.OFF;
     }
 
-    set globalVideoState (state) {
+    set globalVideoState(state) {
         const stage = this.runtime.getTargetForStage();
         if (stage) {
             stage.videoState = state;
@@ -196,7 +211,7 @@ class Scratch3VideoSensingBlocks {
      * Get the latest values for video transparency and state,
      * and set the video device to use them.
      */
-    updateVideoDisplay () {
+    updateVideoDisplay() {
         this.setVideoTransparency({
             TRANSPARENCY: this.globalVideoTransparency
         });
@@ -210,7 +225,7 @@ class Scratch3VideoSensingBlocks {
      * for example old frames, so the first analyzed frame will not be compared
      * against a frame from before reset was called.
      */
-    reset () {
+    reset() {
         this.detect.reset();
 
         const targets = this.runtime.targets;
@@ -228,7 +243,7 @@ class Scratch3VideoSensingBlocks {
      * skin, and add a TypedArray copy of the canvas's pixel data.
      * @private
      */
-    _loop () {
+    _loop() {
         const loopTime = Math.max(this.runtime.currentStepTime, Scratch3VideoSensingBlocks.INTERVAL);
         this._loopInterval = setTimeout(this._loop.bind(this), loopTime);
 
@@ -253,7 +268,7 @@ class Scratch3VideoSensingBlocks {
     /**
      * Stop the video sampling loop. Only used for testing.
      */
-    _stopLoop () {
+    _stopLoop() {
         clearTimeout(this._loopInterval);
     }
 
@@ -266,7 +281,7 @@ class Scratch3VideoSensingBlocks {
      * @return {array} - An array of objects with text and value properties.
      * @private
      */
-    _buildMenu (info) {
+    _buildMenu(info) {
         return info.map((entry, index) => {
             const obj = {};
             obj.text = entry.name;
@@ -281,7 +296,7 @@ class Scratch3VideoSensingBlocks {
      *   target. This will be created if necessary.
      * @private
      */
-    _getMotionState (target) {
+    _getMotionState(target) {
         let motionState = target.getCustomState(Scratch3VideoSensingBlocks.STATE_KEY);
         if (!motionState) {
             motionState = Clone.simple(Scratch3VideoSensingBlocks.DEFAULT_MOTION_STATE);
@@ -290,7 +305,7 @@ class Scratch3VideoSensingBlocks {
         return motionState;
     }
 
-    static get SensingAttribute () {
+    static get SensingAttribute() {
         return SensingAttribute;
     }
 
@@ -302,7 +317,7 @@ class Scratch3VideoSensingBlocks {
      *   attribute menu
      * @param {string} value - the serializable value of the attribute
      */
-    get ATTRIBUTE_INFO () {
+    get ATTRIBUTE_INFO() {
         return [
             {
                 name: formatMessage({
@@ -323,7 +338,7 @@ class Scratch3VideoSensingBlocks {
         ];
     }
 
-    static get SensingSubject () {
+    static get SensingSubject() {
         return SensingSubject;
     }
 
@@ -333,7 +348,7 @@ class Scratch3VideoSensingBlocks {
      * @param {string} name - the translatable name to display in the subject menu
      * @param {string} value - the serializable value of the subject
      */
-    get SUBJECT_INFO () {
+    get SUBJECT_INFO() {
         return [
             {
                 name: formatMessage({
@@ -359,7 +374,7 @@ class Scratch3VideoSensingBlocks {
      * @readonly
      * @enum {string}
      */
-    static get VideoState () {
+    static get VideoState() {
         return VideoState;
     }
 
@@ -369,7 +384,7 @@ class Scratch3VideoSensingBlocks {
      * @param {string} name - the translatable name to display in the video state menu
      * @param {string} value - the serializable value stored in the block
      */
-    get VIDEO_STATE_INFO () {
+    get VIDEO_STATE_INFO() {
         return [
             {
                 name: formatMessage({
@@ -402,7 +417,7 @@ class Scratch3VideoSensingBlocks {
     /**
      * @returns {object} metadata for this extension and its blocks.
      */
-    getInfo () {
+    getInfo() {
         // Set the video display properties to defaults the first time
         // getInfo is run. This turns on the video device when it is
         // first added to a project, and is overwritten by a PROJECT_LOADED
@@ -491,6 +506,24 @@ class Scratch3VideoSensingBlocks {
                             defaultValue: 50
                         }
                     }
+                },
+                {
+                    opcode: 'capturePhoto',
+                    blockType: BlockType.REPORTER,
+                    text: formatMessage({
+                        id: 'videoSensing.capturePhoto',
+                        default: 'capture photo from camera',
+                        description: 'Captures a photo from the camera and returns it as a base64 data URL'
+                    })
+                },
+                {
+                    opcode: 'saveVideoFrame',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'videoSensing.saveVideoFrame',
+                        default: 'save video frame as PNG to /tmp',
+                        description: 'Saves the current video frame as a PNG file to /tmp directory'
+                    })
                 }
             ],
             menus: {
@@ -515,7 +548,7 @@ class Scratch3VideoSensingBlocks {
      * @param {Target} target - a target to determine where to analyze
      * @returns {MotionState} the motion state for the given target
      */
-    _analyzeLocalMotion (target) {
+    _analyzeLocalMotion(target) {
         const drawable = this.runtime.renderer._allDrawables[target.drawableID];
         const state = this._getMotionState(target);
         this.detect.getLocalMotion(drawable, state);
@@ -530,7 +563,7 @@ class Scratch3VideoSensingBlocks {
      * @param {BlockUtility} util - the block utility
      * @returns {number} the motion amount or direction of the stage or sprite
      */
-    videoOn (args, util) {
+    videoOn(args, util) {
         this.detect.analyzeFrame();
 
         let state = this.detect;
@@ -553,7 +586,7 @@ class Scratch3VideoSensingBlocks {
      * @returns {boolean} true if the sprite overlaps more motion than the
      *   reference
      */
-    whenMotionGreaterThan (args, util) {
+    whenMotionGreaterThan(args, util) {
         this.detect.analyzeFrame();
         const state = this._analyzeLocalMotion(util.target);
         return state.motionAmount > Number(args.REFERENCE);
@@ -565,7 +598,7 @@ class Scratch3VideoSensingBlocks {
      * @param {object} args - the block arguments
      * @param {VideoState} args.VIDEO_STATE - the video state to set the device to
      */
-    videoToggle (args) {
+    videoToggle(args) {
         const state = args.VIDEO_STATE;
         this.globalVideoState = state;
         if (state === VideoState.OFF) {
@@ -584,10 +617,77 @@ class Scratch3VideoSensingBlocks {
      * @param {number} args.TRANSPARENCY - the transparency to set the video
      *   preview to
      */
-    setVideoTransparency (args) {
+    setVideoTransparency(args) {
         const transparency = Cast.toNumber(args.TRANSPARENCY);
         this.globalVideoTransparency = transparency;
         this.runtime.ioDevices.video.setPreviewGhost(transparency);
+    }
+
+    /**
+     * A scratch reporter block handle that captures a photo from the camera
+     * and returns it as a base64 data URL.
+     * @returns {string} the captured photo as a base64 data URL
+     */
+    capturePhoto() {
+        if (!this.runtime.ioDevices.video.videoReady) {
+            return '';
+        }
+
+        // Get the current frame as a canvas
+        const canvas = this.runtime.ioDevices.video.getFrame({
+            format: Video.FORMAT_CANVAS,
+            dimensions: Scratch3VideoSensingBlocks.DIMENSIONS
+        });
+
+        if (!canvas) {
+            return '';
+        }
+
+        // Convert canvas to base64 data URL
+        try {
+            return canvas.toDataURL('image/png');
+        } catch (error) {
+            console.warn('Failed to capture photo:', error);
+            return '';
+        }
+    }
+
+    /**
+     * A scratch command block handle that saves the current video frame as a PNG file
+     * to the /tmp directory with a short UUID filename.
+     */
+    saveVideoFrame() {
+        if (!this.runtime.ioDevices.video.videoReady) {
+            console.warn('Video not ready for frame capture');
+            return;
+        }
+
+        // Get the current frame as a canvas
+        const canvas = this.runtime.ioDevices.video.getFrame({
+            format: Video.FORMAT_CANVAS,
+            dimensions: Scratch3VideoSensingBlocks.DIMENSIONS
+        });
+
+        if (!canvas) {
+            console.warn('Failed to get video frame');
+            return;
+        }
+
+        try {
+            // Convert canvas to PNG buffer directly
+            const buffer = canvas.toBuffer('image/png');
+
+            // Generate filename with short UUID
+            const filename = `${generateShortUUID()}.png`;
+            const filepath = path.join('/tmp', filename);
+
+            // Save PNG buffer to /tmp directory
+            fs.writeFileSync(filepath, buffer);
+
+            console.log(`Video frame saved to: ${filepath}`);
+        } catch (error) {
+            console.warn('Failed to save video frame:', error);
+        }
     }
 }
 
