@@ -101,7 +101,7 @@ class Scratch3OSSBlocks {
           arguments: {
             REGION: {
               type: ArgumentType.STRING,
-              defaultValue: 'oss-cn-hangzhou'
+              defaultValue: 'oss-cn-shanghai'
             },
             ACCESS_KEY_ID: {
               type: ArgumentType.STRING,
@@ -113,11 +113,11 @@ class Scratch3OSSBlocks {
             },
             BUCKET: {
               type: ArgumentType.STRING,
-              defaultValue: 'your-bucket-name'
+              defaultValue: 'scratch-oss'
             },
             OBJECT_KEY: {
               type: ArgumentType.STRING,
-              defaultValue: 'folder/file.png'
+              defaultValue: 'white.png'
             },
             BASE64_DATA: {
               type: ArgumentType.STRING,
