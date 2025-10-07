@@ -126,6 +126,25 @@ class Scratch3OSSBlocks {
                 'DwAChwGA60e6kgAAAABJRU5ErkJggg=='
             }
           }
+        },
+        {
+          opcode: 'testCORS',
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: 'oss.testCORS',
+            default: '测试CORS连接 [BUCKET] [REGION]',
+            description: 'Test CORS connection to OSS bucket'
+          }),
+          arguments: {
+            BUCKET: {
+              type: ArgumentType.STRING,
+              defaultValue: 'robot-see'
+            },
+            REGION: {
+              type: ArgumentType.STRING,
+              defaultValue: 'oss-cn-shanghai'
+            }
+          }
         }
       ]
     };
@@ -162,6 +181,24 @@ class Scratch3OSSBlocks {
   }
 
   /**
+   * Test CORS connection to OSS bucket
+   * @param {object} args - the arguments
+   */
+  testCORS(args) {
+    const bucket = Cast.toString(args.BUCKET);
+    const region = Cast.toString(args.REGION);
+
+    this._uploadStatus = '测试CORS连接中...';
+
+    // 测试CORS连接
+    this._testCORSConnection(bucket, region)
+      .catch(error => {
+        this._uploadStatus = `CORS测试失败：${error.message}`;
+        console.error('CORS测试错误:', error);
+      });
+  }
+
+  /**
    * Upload to OSS using direct HTTP request with signature
    * @param {string} region - OSS region
    * @param {string} accessKeyId - Access Key ID
@@ -180,18 +217,22 @@ class Scratch3OSSBlocks {
       // 生成签名
       const signature = await this._generateOSSSignature('PUT', objectKey, accessKeySecret, bucket, region);
 
-      // 设置请求头
+      // 设置请求头，添加CORS相关头
       const headers = {
         'Authorization': `OSS ${accessKeyId}:${signature}`,
         'Content-Type': 'application/octet-stream',
-        'Content-Length': dataBuffer.length.toString()
+        'Content-Length': dataBuffer.length.toString(),
+        'Access-Control-Request-Method': 'PUT',
+        'Access-Control-Request-Headers': 'authorization,content-type,content-length'
       };
 
-      // 使用fetch进行上传
+      // 使用fetch进行上传，添加mode和credentials配置
       const response = await fetch(url, {
         method: 'PUT',
         headers: headers,
-        body: dataBuffer
+        body: dataBuffer,
+        mode: 'cors', // 明确指定CORS模式
+        credentials: 'omit' // 不发送cookies
       });
 
       if (response.ok) {
@@ -200,11 +241,21 @@ class Scratch3OSSBlocks {
         const result = await response.text();
         console.log('OSS上传结果:', result);
       } else {
+        // 检查是否是CORS错误
+        if (response.status === 0 || response.type === 'opaque') {
+          throw new Error('CORS错误：请检查OSS存储桶的跨域配置');
+        }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
-      this._uploadStatus = `上传失败：${error.message}`;
-      console.error('OSS上传错误:', error);
+      // 检查是否是网络或CORS相关错误
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        this._uploadStatus = '网络错误：请检查CORS配置或网络连接';
+        console.error('网络/CORS错误:', error);
+      } else {
+        this._uploadStatus = `上传失败：${error.message}`;
+        console.error('OSS上传错误:', error);
+      }
     }
   }
 
@@ -240,6 +291,74 @@ class Scratch3OSSBlocks {
     const base64Signature = btoa(String.fromCharCode.apply(null, signatureArray));
 
     return base64Signature;
+  }
+
+  /**
+   * Test CORS connection to OSS bucket
+   * @param {string} bucket - Bucket name
+   * @param {string} region - OSS region
+   * @private
+   */
+  async _testCORSConnection(bucket, region) {
+    try {
+      // 构建测试URL
+      const endpoint = `https://${bucket}.${region}.aliyuncs.com`;
+      const testUrl = `${endpoint}/white.png`;
+
+      console.log('测试CORS连接:', testUrl);
+
+      // 发送OPTIONS预检请求
+      const optionsResponse = await fetch(testUrl, {
+        method: 'OPTIONS',
+        mode: 'cors',
+        headers: {
+          'Access-Control-Request-Method': 'GET',
+          'Access-Control-Request-Headers': 'authorization,content-type'
+        }
+      });
+
+      console.log('OPTIONS响应状态:', optionsResponse.status);
+      console.log('OPTIONS响应头:', Object.fromEntries(optionsResponse.headers.entries()));
+
+      // 检查CORS头
+      const corsHeaders = {
+        'Access-Control-Allow-Origin': optionsResponse.headers.get('Access-Control-Allow-Origin'),
+        'Access-Control-Allow-Methods': optionsResponse.headers.get('Access-Control-Allow-Methods'),
+        'Access-Control-Allow-Headers': optionsResponse.headers.get('Access-Control-Allow-Headers')
+      };
+
+      console.log('CORS头信息:', corsHeaders);
+
+      if (corsHeaders['Access-Control-Allow-Origin']) {
+        this._uploadStatus = 'CORS连接正常';
+        console.log('CORS配置正确');
+      } else {
+        this._uploadStatus = 'CORS配置缺失：请配置存储桶跨域设置';
+        console.warn('CORS配置缺失');
+      }
+
+      // 尝试发送GET请求
+      const getResponse = await fetch(testUrl, {
+        method: 'GET',
+        mode: 'cors'
+      });
+
+      console.log('GET响应状态:', getResponse.status);
+
+      if (getResponse.ok) {
+        this._uploadStatus = 'CORS连接正常，文件可访问';
+      } else {
+        this._uploadStatus = `CORS连接正常，但文件访问失败：${getResponse.status}`;
+      }
+    } catch (error) {
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        this._uploadStatus = 'CORS连接失败：请检查存储桶跨域配置';
+        console.error('CORS连接失败:', error);
+      } else {
+        this._uploadStatus = `CORS测试错误：${error.message}`;
+        console.error('CORS测试错误:', error);
+      }
+    }
   }
 
   /**
