@@ -214,16 +214,18 @@ class Scratch3OSSBlocks {
       const endpoint = `https://${bucket}.${region}.aliyuncs.com`;
       const url = `${endpoint}/${objectKey}`;
 
-      // 生成签名
-      const signature = await this._generateOSSSignature('PUT', objectKey, accessKeySecret, bucket, region);
+      // 生成签名和日期
+      const date = new Date().toUTCString();
+      const signature = await this._generateOSSSignature('PUT', objectKey, accessKeySecret, bucket, region, date);
 
       // 设置请求头，添加CORS相关头
       const headers = {
         'Authorization': `OSS ${accessKeyId}:${signature}`,
+        'Date': date,
         'Content-Type': 'application/octet-stream',
         'Content-Length': dataBuffer.length.toString(),
         'Access-Control-Request-Method': 'PUT',
-        'Access-Control-Request-Headers': 'authorization,content-type,content-length'
+        'Access-Control-Request-Headers': 'authorization,content-type,content-length,date'
       };
 
       // 使用fetch进行上传，添加mode和credentials配置
@@ -266,11 +268,11 @@ class Scratch3OSSBlocks {
    * @param {string} accessKeySecret - Access Key Secret
    * @param {string} bucket - Bucket name
    * @param {string} region - OSS region
+   * @param {string} date - Date string in UTC format
    * @return {Promise<string>} Base64 encoded signature
    * @private
    */
-  async _generateOSSSignature(method, objectKey, accessKeySecret, bucket) {
-    const date = new Date().toUTCString();
+  async _generateOSSSignature(method, objectKey, accessKeySecret, bucket, region, date) {
     const stringToSign = `${method}\n\napplication/octet-stream\n${date}\n/${bucket}/${objectKey}`;
 
     // 使用Web Crypto API生成HMAC-SHA1签名
