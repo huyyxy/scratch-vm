@@ -16,13 +16,13 @@ const menuIconURI = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZ
   'L3NrZXRjaCAtLT4KICAgIDx0aXRsZT5FeHRlbnNpb25zL0Nsb3VkL0FsaXl1bi1PU1MtTWVudTwvdGl0bGU+CiAgICA8ZGVz' +
   'Yz5DcmVhdGVkIHdpdGggU2tldGNoLjwvZGVzYz4KICAgIDxnIGlkPSJFeHRlbnNpb25zL0Nsb3VkL0FsaXl1bi1PU1MtTWVu' +
   'dSIgc3Ryb2tlPSJub25lIiBzdHJva2Utd2lkdGg9IjEiIGZpbGw9Im5vbmUiIGZpbGwtcnVsZT0iZXZlbm9kZCI+CiAgICAg' +
-  'ICAgPGcgaWQ9ImNsb3VkLXVwbG9hZCIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMC4wMDAwMDAsIDUuMDAwMDAwKSIgZmlsbC1y' +
-  'dWxlPSJub256ZXJvIj4KICAgICAgICAgICAgPGNpcmNsZSBpZD0iQ2lyY2xlIiBmaWxsPSIjMDA3Q0ZGIiBvcGFjaXR5PSIw' +
-  'LjMiIGN4PSIxMCIgY3k9IjEwIiByPSI4Ij48L2NpcmNsZT4KICAgICAgICAgICAgPGNpcmNsZSBpZD0iQ2lyY2xlLUNvcHki' +
-  'IGZpbGw9IiMwMDdDRkYiIG9wYWNpdHk9IjAuNSIgY3g9IjEwIiBjeT0iMTAiIHI9IjYiPjwvY2lyY2xlPgogICAgICAgICAg' +
-  'ICA8cGF0aCBpZD0iVXBsb2FkLUFycm93IiBkPSJNMTAsNiBMMTAsMTQgTTYsMTAgTDEwLDYgTDE0LDEwIiBzdHJva2U9IiMw' +
-  'MDdDRkYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBm' +
-  'aWxsPSJub25lIi8+CiAgICAgICAgPC9nPgogICAgPC9nPgo8L3N2Zz4=';
+  'ICAgICAgIDxnIGlkPSJjbG91ZC11cGxvYWQiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAuMDAwMDAwLCA1LjAwMDAwMCkiIGZp' +
+  'bGwtcnVsZT0ibm9uemVybyI+CiAgICAgICAgICAgICAgICA8Y2lyY2xlIGlkPSJDaXJjbGUiIGZpbGw9IiMwMDdDRkYiIG9w' +
+  'YWNpdHk9IjAuMyIgY3g9IjEwIiBjeT0iMTAiIHI9IjgiPjwvY2lyY2xlPgogICAgICAgICAgICAgICAgPGNpcmNsZSBpZD0i' +
+  'Q2lyY2xlLUNvcHkiIGZpbGw9IiMwMDdDRkYiIG9wYWNpdHk9IjAuNSIgY3g9IjEwIiBjeT0iMTAiIHI9IjYiPjwvY2lyY2xl' +
+  'PgogICAgICAgICAgICAgICAgPHBhdGggaWQ9IlVwbG9hZC1BcnJvdyIgZD0iTTEwLDYgTDEwLDE0IE02LDEwIEwxMCw2IEwx' +
+  'NCwxMCIgc3Ryb2tlPSIjMDA3Q0ZGIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxp' +
+  'bmVqb2luPSJyb3VuZCIgZmlsbD0ibm9uZSIvPgogICAgICAgICAgICAgPC9nPgogICAgPC9nPgo8L3N2Zz4=';
 
 /**
  * Icon svg to be displayed at the left edge of each extension block, encoded as a data URI.
@@ -35,15 +35,15 @@ const blockIconURI = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNv
   'L3NrZXRjaCAtLT4KICAgIDx0aXRsZT5FeHRlbnNpb25zL0Nsb3VkL0FsaXl1bi1PU1MtQmxvY2s8L3RpdGxlPgogICAgPGRl' +
   'c2M+Q3JlYXRlZCB3aXRoIFNrZXRjaC48L2Rlc2M+CiAgICA8ZyBpZD0iRXh0ZW5zaW9ucy9DbG91ZC9BbGl5dW4tT1NTLUJs' +
   'b2NrIiBzdHJva2U9Im5vbmUiIHN0cm9rZS13aWR0aD0iMSIgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJv' +
-  'a2Utb3BhY2l0eT0iMC4xNSI+CiAgICAgICAgPGcgaWQ9ImNsb3VkLXVwbG9hZCIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMC4w' +
-  'MDAwMDAsIDEwLjAwMDAwMCkiIGZpbGwtcnVsZT0ibm9uemVybyIgc3Ryb2tlPSIjMDAwMDAwIj4KICAgICAgICAgICAg' +
-  'PGNpcmNsZSBpZD0iQ2lyY2xlIiBmaWxsPSIjRkZGRkZGIiBvcGFjaXR5PSIwLjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIg' +
-  'c3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgY3g9IjIwIiBjeT0iMjAiIHI9IjE2Ij48L2NpcmNsZT4KICAgICAgICAgICAg' +
-  'PGNpcmNsZSBpZD0iQ2lyY2xlLUNvcHkiIGZpbGw9IiNGRkZGRkYiIG9wYWNpdHk9IjAuNSIgc3Ryb2tlLWxpbmVjYXA9InJv' +
-  'dW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjeD0iMjAiIGN5PSIyMCIgcj0iMTIiPjwvY2lyY2xlPgogICAgICAgICAg' +
-  'ICA8cGF0aCBpZD0iVXBsb2FkLUFycm93IiBkPSJNMjAsMTIgTDIwLDI4IE0xMiwyMCBMMjAsMTIgTDI4LDIwIiBzdHJva2U9' +
-  'IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5k' +
-  'IiBmaWxsPSJub25lIi8+CiAgICAgICAgPC9nPgogICAgPC9nPgo8L3N2Zz4=';
+  'a2Utb3BhY2l0eT0iMC4xNSI+CiAgICAgICAgICAgIDxnIGlkPSJjbG91ZC11cGxvYWQiIHRyYW5zZm9ybT0idHJhbnNsYXRl' +
+  'KDAuMDAwMDAwLCAxMC4wMDAwMDApIiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0iIzAwMDAwMCI+CiAgICAgICAgICAgICAg' +
+  'ICAgPGNpcmNsZSBpZD0iQ2lyY2xlIiBmaWxsPSIjRkZGRkZGIiBvcGFjaXR5PSIwLjMiIHN0cm9rZS1saW5lY2FwPSJyb3Vu' +
+  'ZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgY3g9IjIwIiBjeT0iMjAiIHI9IjE2Ij48L2NpcmNsZT4KICAgICAgICAgICAg' +
+  'ICAgICA8Y2lyY2xlIGlkPSJDaXJjbGUtQ29weSIgZmlsbD0iI0ZGRkZGRiIgb3BhY2l0eT0iMC41IiBzdHJva2UtbGluZWNh' +
+  'cD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGN4PSIyMCIgY3k9IjIwIiByPSIxMiI+PC9jaXJjbGU+CiAgICAg' +
+  'ICAgICAgICAgICAgPHBhdGggaWQ9IlVwbG9hZC1BcnJvdyIgZD0iTTIwLDEyIEwyMCwyOCBNMTIsMjAgTDIwLDEyIEwyOCwy' +
+  'MCIgc3Ryb2tlPSIjMDAwMDAwIiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVq' +
+  'b2luPSJyb3VuZCIgZmlsbD0ibm9uZSIvPgogICAgICAgICAgICAgPC9nPgogICAgPC9nPgo8L3N2Zz4=';
 
 /**
  * Class for the Aliyun OSS-related blocks in Scratch 3.0
@@ -132,7 +132,7 @@ class Scratch3OSSBlocks {
   }
 
   /**
-   * Upload base64 data to OSS
+   * Upload base64 data to OSS using direct HTTP request
    * @param {object} args - the arguments
    */
   uploadToOSS(args) {
@@ -149,29 +149,84 @@ class Scratch3OSSBlocks {
       // 转换 base64 数据为 Buffer
       const dataBuffer = this._base64ToBuffer(base64Data);
 
-      // 创建 OSS 客户端
-      const OSS = require('ali-oss');
-      const client = new OSS({
-        region: region,
-        accessKeyId: accessKeyId,
-        accessKeySecret: accessKeySecret,
-        bucket: bucket
-      });
-
-      // 上传数据
-      client.put(objectKey, dataBuffer)
-        .then(result => {
-          this._uploadStatus = '上传成功';
-          console.log('OSS上传结果:', result);
-        })
-        .catch(error => {
-          this._uploadStatus = `上传失败：${error.message}`;
-          console.error('OSS上传错误:', error);
-        });
+      // 使用直接HTTP请求上传到OSS
+      this._uploadToOSSWithHTTP(region, accessKeyId, accessKeySecret, bucket, objectKey, dataBuffer);
     } catch (error) {
       this._uploadStatus = `错误：${error.message}`;
       console.error('OSS配置错误:', error);
     }
+  }
+
+  /**
+   * Upload to OSS using direct HTTP request with signature
+   * @param {string} region - OSS region
+   * @param {string} accessKeyId - Access Key ID
+   * @param {string} accessKeySecret - Access Key Secret
+   * @param {string} bucket - Bucket name
+   * @param {string} objectKey - Object key
+   * @param {Buffer} dataBuffer - Data to upload
+   * @private
+   */
+  _uploadToOSSWithHTTP(region, accessKeyId, accessKeySecret, bucket, objectKey, dataBuffer) {
+    // 构建OSS endpoint
+    const endpoint = `https://${bucket}.${region}.aliyuncs.com`;
+    const url = `${endpoint}/${objectKey}`;
+
+    // 生成签名
+    const signature = this._generateOSSSignature('PUT', objectKey, accessKeySecret, bucket, region);
+
+    // 设置请求头
+    const headers = {
+      'Authorization': `OSS ${accessKeyId}:${signature}`,
+      'Content-Type': 'application/octet-stream',
+      'Content-Length': dataBuffer.length.toString()
+    };
+
+    // 使用fetch进行上传
+    fetch(url, {
+      method: 'PUT',
+      headers: headers,
+      body: dataBuffer
+    })
+      .then(response => {
+        if (response.ok) {
+          this._uploadStatus = '上传成功';
+          console.log('OSS上传成功:', response.status);
+          return response.text();
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      })
+      .then(result => {
+        console.log('OSS上传结果:', result);
+      })
+      .catch(error => {
+        this._uploadStatus = `上传失败：${error.message}`;
+        console.error('OSS上传错误:', error);
+      });
+  }
+
+  /**
+   * Generate OSS signature for authentication
+   * @param {string} method - HTTP method
+   * @param {string} objectKey - Object key
+   * @param {string} accessKeySecret - Access Key Secret
+   * @param {string} bucket - Bucket name
+   * @param {string} region - OSS region
+   * @return {string} Base64 encoded signature
+   * @private
+   */
+  _generateOSSSignature(method, objectKey, accessKeySecret, bucket) {
+    const date = new Date().toUTCString();
+    const stringToSign = `${method}\n\napplication/octet-stream\n${date}\n/${bucket}/${objectKey}`;
+
+    // 使用HMAC-SHA1生成签名
+    const crypto = require('crypto');
+    const signature = crypto
+      .createHmac('sha1', accessKeySecret)
+      .update(stringToSign)
+      .digest('base64');
+
+    return signature;
   }
 
   /**
@@ -199,7 +254,6 @@ class Scratch3OSSBlocks {
       throw new Error(`Base64 转换失败：${error.message}`);
     }
   }
-
 }
 
 module.exports = Scratch3OSSBlocks;
