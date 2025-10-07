@@ -4,6 +4,7 @@ const BlockType = require('../../extension-support/block-type');
 const Cast = require('../../util/cast');
 const formatMessage = require('format-message');
 const Buffer = require('buffer').Buffer;
+const OSS = require('ali-oss');
 
 /**
  * Icon svg to be displayed in the blocks category menu, encoded as a data URI.
@@ -126,25 +127,6 @@ class Scratch3OSSBlocks {
                 'DwAChwGA60e6kgAAAABJRU5ErkJggg=='
             }
           }
-        },
-        {
-          opcode: 'testCORS',
-          blockType: BlockType.COMMAND,
-          text: formatMessage({
-            id: 'oss.testCORS',
-            default: '测试CORS连接 [BUCKET] [REGION]',
-            description: 'Test CORS connection to OSS bucket'
-          }),
-          arguments: {
-            BUCKET: {
-              type: ArgumentType.STRING,
-              defaultValue: 'robot-see'
-            },
-            REGION: {
-              type: ArgumentType.STRING,
-              defaultValue: 'oss-cn-shanghai'
-            }
-          }
         }
       ]
     };
@@ -180,26 +162,9 @@ class Scratch3OSSBlocks {
     }
   }
 
-  /**
-   * Test CORS connection to OSS bucket
-   * @param {object} args - the arguments
-   */
-  testCORS(args) {
-    const bucket = Cast.toString(args.BUCKET);
-    const region = Cast.toString(args.REGION);
-
-    this._uploadStatus = '测试CORS连接中...';
-
-    // 测试CORS连接
-    this._testCORSConnection(bucket, region)
-      .catch(error => {
-        this._uploadStatus = `CORS测试失败：${error.message}`;
-        console.error('CORS测试错误:', error);
-      });
-  }
 
   /**
-   * Upload to OSS using direct HTTP request with signature
+   * Upload to OSS using ali-oss SDK
    * @param {string} region - OSS region
    * @param {string} accessKeyId - Access Key ID
    * @param {string} accessKeySecret - Access Key Secret
@@ -210,158 +175,64 @@ class Scratch3OSSBlocks {
    */
   async _uploadToOSSWithHTTP(region, accessKeyId, accessKeySecret, bucket, objectKey, dataBuffer) {
     try {
-      // 构建OSS endpoint
-      const endpoint = `https://${bucket}.${region}.aliyuncs.com`;
-      const url = `${endpoint}/${objectKey}`;
-
-      // 生成签名和日期
-      const date = new Date().toUTCString();
-      const signature = await this._generateOSSSignature('PUT', objectKey, accessKeySecret, bucket, region, date);
-
-      // 设置请求头，添加CORS相关头
-      const headers = {
-        'Authorization': `OSS ${accessKeyId}:${signature}`,
-        'Date': date,
-        'Content-Type': 'application/octet-stream',
-        'Content-Length': dataBuffer.length.toString(),
-        'Access-Control-Request-Method': 'PUT',
-        'Access-Control-Request-Headers': 'authorization,content-type,content-length,date'
-      };
-
-      // 使用fetch进行上传，添加mode和credentials配置
-      const response = await fetch(url, {
-        method: 'PUT',
-        headers: headers,
-        body: dataBuffer,
-        mode: 'cors', // 明确指定CORS模式
-        credentials: 'omit' // 不发送cookies
+      // 创建OSS客户端实例
+      const client = new OSS({
+        region: region,
+        accessKeyId: accessKeyId,
+        accessKeySecret: accessKeySecret,
+        bucket: bucket,
+        secure: true, // 使用HTTPS
+        timeout: 60000 // 设置超时时间为60秒
       });
 
-      if (response.ok) {
-        this._uploadStatus = '上传成功';
-        console.log('OSS上传成功:', response.status);
-        const result = await response.text();
-        console.log('OSS上传结果:', result);
-      } else {
-        // 检查是否是CORS错误
-        if (response.status === 0 || response.type === 'opaque') {
-          throw new Error('CORS错误：请检查OSS存储桶的跨域配置');
+      console.log('开始上传到OSS:', { bucket, objectKey, region });
+
+      // 使用ali-oss SDK上传文件
+      const result = await client.put(objectKey, dataBuffer, {
+        headers: {
+          'Content-Type': 'application/octet-stream'
         }
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      });
+
+      if (result && result.res && result.res.status === 200) {
+        this._uploadStatus = '上传成功';
+        console.log('OSS上传成功:', result);
+      } else {
+        throw new Error(`上传失败，状态码: ${result.res ? result.res.status : 'unknown'}`);
       }
     } catch (error) {
-      // 检查是否是网络或CORS相关错误
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        this._uploadStatus = '网络错误：请检查CORS配置或网络连接';
-        console.error('网络/CORS错误:', error);
+      // 处理不同类型的错误
+      if (error.code) {
+        switch (error.code) {
+          case 'SignatureDoesNotMatch':
+            this._uploadStatus = '鉴权失败：签名不匹配，请检查AccessKey';
+            break;
+          case 'AccessDenied':
+            this._uploadStatus = '权限不足：请检查AccessKey权限和存储桶权限';
+            break;
+          case 'NoSuchBucket':
+            this._uploadStatus = '存储桶不存在：请检查存储桶名称';
+            break;
+          case 'InvalidAccessKeyId':
+            this._uploadStatus = 'AccessKey无效：请检查AccessKey ID';
+            break;
+          case 'RequestTimeTooSkewed':
+            this._uploadStatus = '请求时间偏差过大：请检查系统时间';
+            break;
+          default:
+            this._uploadStatus = `上传失败：${error.code} - ${error.message}`;
+        }
+      } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        this._uploadStatus = '网络错误：请检查网络连接和CORS配置';
       } else {
         this._uploadStatus = `上传失败：${error.message}`;
-        console.error('OSS上传错误:', error);
       }
+
+      console.error('OSS上传错误:', error);
     }
   }
 
-  /**
-   * Generate OSS signature for authentication using Web Crypto API
-   * @param {string} method - HTTP method
-   * @param {string} objectKey - Object key
-   * @param {string} accessKeySecret - Access Key Secret
-   * @param {string} bucket - Bucket name
-   * @param {string} region - OSS region
-   * @param {string} date - Date string in UTC format
-   * @return {Promise<string>} Base64 encoded signature
-   * @private
-   */
-  async _generateOSSSignature(method, objectKey, accessKeySecret, bucket, region, date) {
-    const stringToSign = `${method}\n\napplication/octet-stream\n${date}\n/${bucket}/${objectKey}`;
 
-    // 使用Web Crypto API生成HMAC-SHA1签名
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(accessKeySecret);
-    const messageData = encoder.encode(stringToSign);
-
-    const key = await crypto.subtle.importKey(
-      'raw',
-      keyData,
-      { name: 'HMAC', hash: 'SHA-1' },
-      false,
-      ['sign']
-    );
-
-    const signature = await crypto.subtle.sign('HMAC', key, messageData);
-    const signatureArray = new Uint8Array(signature);
-    const base64Signature = btoa(String.fromCharCode.apply(null, signatureArray));
-
-    return base64Signature;
-  }
-
-  /**
-   * Test CORS connection to OSS bucket
-   * @param {string} bucket - Bucket name
-   * @param {string} region - OSS region
-   * @private
-   */
-  async _testCORSConnection(bucket, region) {
-    try {
-      // 构建测试URL
-      const endpoint = `https://${bucket}.${region}.aliyuncs.com`;
-      const testUrl = `${endpoint}/white.png`;
-
-      console.log('测试CORS连接:', testUrl);
-
-      // 发送OPTIONS预检请求
-      const optionsResponse = await fetch(testUrl, {
-        method: 'OPTIONS',
-        mode: 'cors',
-        headers: {
-          'Access-Control-Request-Method': 'GET',
-          'Access-Control-Request-Headers': 'authorization,content-type'
-        }
-      });
-
-      console.log('OPTIONS响应状态:', optionsResponse.status);
-      console.log('OPTIONS响应头:', Object.fromEntries(optionsResponse.headers.entries()));
-
-      // 检查CORS头
-      const corsHeaders = {
-        'Access-Control-Allow-Origin': optionsResponse.headers.get('Access-Control-Allow-Origin'),
-        'Access-Control-Allow-Methods': optionsResponse.headers.get('Access-Control-Allow-Methods'),
-        'Access-Control-Allow-Headers': optionsResponse.headers.get('Access-Control-Allow-Headers')
-      };
-
-      console.log('CORS头信息:', corsHeaders);
-
-      if (corsHeaders['Access-Control-Allow-Origin']) {
-        this._uploadStatus = 'CORS连接正常';
-        console.log('CORS配置正确');
-      } else {
-        this._uploadStatus = 'CORS配置缺失：请配置存储桶跨域设置';
-        console.warn('CORS配置缺失');
-      }
-
-      // 尝试发送GET请求
-      const getResponse = await fetch(testUrl, {
-        method: 'GET',
-        mode: 'cors'
-      });
-
-      console.log('GET响应状态:', getResponse.status);
-
-      if (getResponse.ok) {
-        this._uploadStatus = 'CORS连接正常，文件可访问';
-      } else {
-        this._uploadStatus = `CORS连接正常，但文件访问失败：${getResponse.status}`;
-      }
-    } catch (error) {
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        this._uploadStatus = 'CORS连接失败：请检查存储桶跨域配置';
-        console.error('CORS连接失败:', error);
-      } else {
-        this._uploadStatus = `CORS测试错误：${error.message}`;
-        console.error('CORS测试错误:', error);
-      }
-    }
-  }
 
   /**
    * Convert base64 data to buffer
