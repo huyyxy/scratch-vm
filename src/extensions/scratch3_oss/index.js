@@ -150,7 +150,11 @@ class Scratch3OSSBlocks {
       const dataBuffer = this._base64ToBuffer(base64Data);
 
       // 使用直接HTTP请求上传到OSS
-      this._uploadToOSSWithHTTP(region, accessKeyId, accessKeySecret, bucket, objectKey, dataBuffer);
+      this._uploadToOSSWithHTTP(region, accessKeyId, accessKeySecret, bucket, objectKey, dataBuffer)
+        .catch(error => {
+          this._uploadStatus = `上传失败：${error.message}`;
+          console.error('OSS上传错误:', error);
+        });
     } catch (error) {
       this._uploadStatus = `错误：${error.message}`;
       console.error('OSS配置错误:', error);
@@ -167,66 +171,75 @@ class Scratch3OSSBlocks {
    * @param {Buffer} dataBuffer - Data to upload
    * @private
    */
-  _uploadToOSSWithHTTP(region, accessKeyId, accessKeySecret, bucket, objectKey, dataBuffer) {
-    // 构建OSS endpoint
-    const endpoint = `https://${bucket}.${region}.aliyuncs.com`;
-    const url = `${endpoint}/${objectKey}`;
+  async _uploadToOSSWithHTTP(region, accessKeyId, accessKeySecret, bucket, objectKey, dataBuffer) {
+    try {
+      // 构建OSS endpoint
+      const endpoint = `https://${bucket}.${region}.aliyuncs.com`;
+      const url = `${endpoint}/${objectKey}`;
 
-    // 生成签名
-    const signature = this._generateOSSSignature('PUT', objectKey, accessKeySecret, bucket, region);
+      // 生成签名
+      const signature = await this._generateOSSSignature('PUT', objectKey, accessKeySecret, bucket, region);
 
-    // 设置请求头
-    const headers = {
-      'Authorization': `OSS ${accessKeyId}:${signature}`,
-      'Content-Type': 'application/octet-stream',
-      'Content-Length': dataBuffer.length.toString()
-    };
+      // 设置请求头
+      const headers = {
+        'Authorization': `OSS ${accessKeyId}:${signature}`,
+        'Content-Type': 'application/octet-stream',
+        'Content-Length': dataBuffer.length.toString()
+      };
 
-    // 使用fetch进行上传
-    fetch(url, {
-      method: 'PUT',
-      headers: headers,
-      body: dataBuffer
-    })
-      .then(response => {
-        if (response.ok) {
-          this._uploadStatus = '上传成功';
-          console.log('OSS上传成功:', response.status);
-          return response.text();
-        }
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      })
-      .then(result => {
-        console.log('OSS上传结果:', result);
-      })
-      .catch(error => {
-        this._uploadStatus = `上传失败：${error.message}`;
-        console.error('OSS上传错误:', error);
+      // 使用fetch进行上传
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: headers,
+        body: dataBuffer
       });
+
+      if (response.ok) {
+        this._uploadStatus = '上传成功';
+        console.log('OSS上传成功:', response.status);
+        const result = await response.text();
+        console.log('OSS上传结果:', result);
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      this._uploadStatus = `上传失败：${error.message}`;
+      console.error('OSS上传错误:', error);
+    }
   }
 
   /**
-   * Generate OSS signature for authentication
+   * Generate OSS signature for authentication using Web Crypto API
    * @param {string} method - HTTP method
    * @param {string} objectKey - Object key
    * @param {string} accessKeySecret - Access Key Secret
    * @param {string} bucket - Bucket name
    * @param {string} region - OSS region
-   * @return {string} Base64 encoded signature
+   * @return {Promise<string>} Base64 encoded signature
    * @private
    */
-  _generateOSSSignature(method, objectKey, accessKeySecret, bucket) {
+  async _generateOSSSignature(method, objectKey, accessKeySecret, bucket) {
     const date = new Date().toUTCString();
     const stringToSign = `${method}\n\napplication/octet-stream\n${date}\n/${bucket}/${objectKey}`;
 
-    // 使用HMAC-SHA1生成签名
-    const crypto = require('crypto');
-    const signature = crypto
-      .createHmac('sha1', accessKeySecret)
-      .update(stringToSign)
-      .digest('base64');
+    // 使用Web Crypto API生成HMAC-SHA1签名
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(accessKeySecret);
+    const messageData = encoder.encode(stringToSign);
 
-    return signature;
+    const key = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-1' },
+      false,
+      ['sign']
+    );
+
+    const signature = await crypto.subtle.sign('HMAC', key, messageData);
+    const signatureArray = new Uint8Array(signature);
+    const base64Signature = btoa(String.fromCharCode.apply(null, signatureArray));
+
+    return base64Signature;
   }
 
   /**
