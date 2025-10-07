@@ -6,9 +6,6 @@ const Clone = require('../../util/clone');
 const Cast = require('../../util/cast');
 const formatMessage = require('format-message');
 const Video = require('../../io/video');
-const fs = require('fs');
-const path = require('path');
-
 const VideoMotion = require('./library');
 
 /**
@@ -65,19 +62,6 @@ const VideoState = {
 
     /** Video turned on without default y axis mirroring. */
     ON_FLIPPED: 'on-flipped'
-};
-
-/**
- * Generate a short UUID-like string
- * @returns {string} A short random string (8 characters)
- */
-const generateShortUUID = function () {
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < 8; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
 };
 
 /**
@@ -515,15 +499,6 @@ class Scratch3VideoSensingBlocks {
                         default: 'capture photo from camera',
                         description: 'Captures a photo from the camera and returns it as a base64 data URL'
                     })
-                },
-                {
-                    opcode: 'saveVideoFrame',
-                    blockType: BlockType.COMMAND,
-                    text: formatMessage({
-                        id: 'videoSensing.saveVideoFrame',
-                        default: 'save video frame as PNG to /tmp',
-                        description: 'Saves the current video frame as a PNG file to /tmp directory'
-                    })
                 }
             ],
             menus: {
@@ -649,44 +624,6 @@ class Scratch3VideoSensingBlocks {
         } catch (error) {
             console.warn('Failed to capture photo:', error);
             return '';
-        }
-    }
-
-    /**
-     * A scratch command block handle that saves the current video frame as a PNG file
-     * to the /tmp directory with a short UUID filename.
-     */
-    saveVideoFrame() {
-        if (!this.runtime.ioDevices.video.videoReady) {
-            console.warn('Video not ready for frame capture');
-            return;
-        }
-
-        // Get the current frame as a canvas
-        const canvas = this.runtime.ioDevices.video.getFrame({
-            format: Video.FORMAT_CANVAS,
-            dimensions: Scratch3VideoSensingBlocks.DIMENSIONS
-        });
-
-        if (!canvas) {
-            console.warn('Failed to get video frame');
-            return;
-        }
-
-        try {
-            // Convert canvas to PNG buffer directly
-            const buffer = canvas.toBuffer('image/png');
-
-            // Generate filename with short UUID
-            const filename = `${generateShortUUID()}.png`;
-            const filepath = path.join('/tmp', filename);
-
-            // Save PNG buffer to /tmp directory
-            fs.writeFileSync(filepath, buffer);
-
-            console.log(`Video frame saved to: ${filepath}`);
-        } catch (error) {
-            console.warn('Failed to save video frame:', error);
         }
     }
 }

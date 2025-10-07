@@ -1,10 +1,8 @@
-const Runtime = require('../../engine/runtime');
+const _Runtime = require('../../engine/runtime');
 const ArgumentType = require('../../extension-support/argument-type');
 const BlockType = require('../../extension-support/block-type');
 const Cast = require('../../util/cast');
 const formatMessage = require('format-message');
-const fs = require('fs');
-const path = require('path');
 
 /**
  * Icon svg to be displayed in the blocks category menu, encoded as a data URI.
@@ -44,29 +42,11 @@ class Scratch3OSSBlocks {
     };
 
     /**
-     * OSS client instance
-     * @type {Object}
+     * Upload status
+     * @type {string}
      * @private
      */
-    this._ossClient = null;
-
-    this._initializeOSS();
-  }
-
-  /**
-   * Initialize OSS client
-   * @private
-   */
-  _initializeOSS() {
-    // 在浏览器环境中，我们需要使用CDN版本的OSS SDK
-    if (typeof window !== 'undefined' && window.OSS) {
-      this._ossClient = new window.OSS({
-        region: this._ossConfig.region,
-        accessKeyId: this._ossConfig.accessKeyId,
-        accessKeySecret: this._ossConfig.accessKeySecret,
-        bucket: this._ossConfig.bucket
-      });
-    }
+    this._uploadStatus = '未开始';
   }
 
   /**
@@ -85,12 +65,12 @@ class Scratch3OSSBlocks {
       blockIconURI: blockIconURI,
       blocks: [
         {
-          opcode: 'setOSSConfig',
+          opcode: 'uploadToOSS',
           blockType: BlockType.COMMAND,
           text: formatMessage({
-            id: 'oss.setConfig',
-            default: '设置OSS配置 [REGION] [ACCESS_KEY_ID] [ACCESS_KEY_SECRET] [BUCKET]',
-            description: 'Set OSS configuration'
+            id: 'oss.uploadToOSS',
+            default: '上传到OSS [REGION] [ACCESS_KEY_ID] [ACCESS_KEY_SECRET] [BUCKET] [OBJECT_KEY] [BASE64_DATA]',
+            description: 'Upload base64 data to OSS'
           }),
           arguments: {
             REGION: {
@@ -108,72 +88,14 @@ class Scratch3OSSBlocks {
             BUCKET: {
               type: ArgumentType.STRING,
               defaultValue: 'your-bucket-name'
-            }
-          }
-        },
-        {
-          opcode: 'uploadFile',
-          blockType: BlockType.COMMAND,
-          text: formatMessage({
-            id: 'oss.uploadFile',
-            default: '上传文件 [FILE_PATH] 到 [OBJECT_KEY]',
-            description: 'Upload file to OSS'
-          }),
-          arguments: {
-            FILE_PATH: {
-              type: ArgumentType.STRING,
-              defaultValue: '/path/to/file.txt'
             },
             OBJECT_KEY: {
               type: ArgumentType.STRING,
-              defaultValue: 'folder/file.txt'
-            }
-          }
-        },
-        {
-          opcode: 'uploadFileWithCallback',
-          blockType: BlockType.COMMAND,
-          text: formatMessage({
-            id: 'oss.uploadFileWithCallback',
-            default: '上传文件 [FILE_PATH] 到 [OBJECT_KEY] 完成后执行 [CALLBACK]',
-            description: 'Upload file to OSS with callback'
-          }),
-          arguments: {
-            FILE_PATH: {
-              type: ArgumentType.STRING,
-              defaultValue: '/path/to/file.txt'
+              defaultValue: 'folder/file.png'
             },
-            OBJECT_KEY: {
+            BASE64_DATA: {
               type: ArgumentType.STRING,
-              defaultValue: 'folder/file.txt'
-            },
-            CALLBACK: {
-              type: ArgumentType.STRING,
-              defaultValue: 'uploaded'
-            }
-          }
-        },
-        {
-          opcode: 'getUploadStatus',
-          blockType: BlockType.REPORTER,
-          text: formatMessage({
-            id: 'oss.getUploadStatus',
-            default: '上传状态',
-            description: 'Get upload status'
-          })
-        },
-        {
-          opcode: 'getFileURL',
-          blockType: BlockType.REPORTER,
-          text: formatMessage({
-            id: 'oss.getFileURL',
-            default: '获取文件URL [OBJECT_KEY]',
-            description: 'Get file URL from OSS'
-          }),
-          arguments: {
-            OBJECT_KEY: {
-              type: ArgumentType.STRING,
-              defaultValue: 'folder/file.txt'
+              defaultValue: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
             }
           }
         }
@@ -182,154 +104,69 @@ class Scratch3OSSBlocks {
   }
 
   /**
-   * Set OSS configuration
+   * Upload base64 data to OSS
    * @param {object} args - the arguments
    */
-  setOSSConfig(args) {
+  uploadToOSS(args) {
     const region = Cast.toString(args.REGION);
     const accessKeyId = Cast.toString(args.ACCESS_KEY_ID);
     const accessKeySecret = Cast.toString(args.ACCESS_KEY_SECRET);
     const bucket = Cast.toString(args.BUCKET);
-
-    this._ossConfig = {
-      region: region,
-      accessKeyId: accessKeyId,
-      accessKeySecret: accessKeySecret,
-      bucket: bucket
-    };
-
-    // 重新初始化OSS客户端
-    this._initializeOSS();
-  }
-
-  /**
-   * Upload file to OSS
-   * @param {object} args - the arguments
-   */
-  uploadFile(args) {
-    const filePath = Cast.toString(args.FILE_PATH);
     const objectKey = Cast.toString(args.OBJECT_KEY);
+    const base64Data = Cast.toString(args.BASE64_DATA);
 
-    this._uploadFileToOSS(filePath, objectKey);
-  }
-
-  /**
-   * Upload file to OSS with callback
-   * @param {object} args - the arguments
-   */
-  uploadFileWithCallback(args) {
-    const filePath = Cast.toString(args.FILE_PATH);
-    const objectKey = Cast.toString(args.OBJECT_KEY);
-    const callback = Cast.toString(args.CALLBACK);
-
-    this._uploadFileToOSS(filePath, objectKey, callback);
-  }
-
-  /**
-   * Get upload status
-   * @return {string} Upload status
-   */
-  getUploadStatus() {
-    return this._uploadStatus || '未开始';
-  }
-
-  /**
-   * Get file URL from OSS
-   * @param {object} args - the arguments
-   * @return {string} File URL
-   */
-  getFileURL(args) {
-    const objectKey = Cast.toString(args.OBJECT_KEY);
-
-    if (!this._ossConfig.bucket || !this._ossConfig.region) {
-      return '请先设置OSS配置';
-    }
-
-    const url = `https://${this._ossConfig.bucket}.${this._ossConfig.region}.aliyuncs.com/${objectKey}`;
-    return url;
-  }
-
-  /**
-   * Upload file to OSS (internal method)
-   * @param {string} filePath - Local file path
-   * @param {string} objectKey - OSS object key
-   * @param {string} callback - Callback message
-   * @private
-   */
-  _uploadFileToOSS(filePath, objectKey, callback = null) {
     this._uploadStatus = '上传中...';
 
-    // 检查配置
-    if (!this._ossConfig.region || !this._ossConfig.accessKeyId ||
-      !this._ossConfig.accessKeySecret || !this._ossConfig.bucket) {
-      this._uploadStatus = '错误：OSS配置不完整';
-      return;
-    }
+    try {
+      // 转换 base64 数据为 Buffer
+      const dataBuffer = this._base64ToBuffer(base64Data);
 
-    // 检查文件是否存在
-    if (typeof window !== 'undefined') {
-      // 浏览器环境
-      this._uploadStatus = '错误：浏览器环境不支持本地文件上传';
-      return;
-    }
+      // 创建 OSS 客户端
+      const OSS = require('ali-oss');
+      const client = new OSS({
+        region: region,
+        accessKeyId: accessKeyId,
+        accessKeySecret: accessKeySecret,
+        bucket: bucket
+      });
 
-    // Node.js环境
-    if (typeof require !== 'undefined') {
-      try {
-        const fs = require('fs');
-        const path = require('path');
-
-        // 检查文件是否存在
-        if (!fs.existsSync(filePath)) {
-          this._uploadStatus = '错误：文件不存在';
-          return;
-        }
-
-        // 读取文件
-        const fileBuffer = fs.readFileSync(filePath);
-        const fileName = path.basename(filePath);
-
-        // 使用阿里云OSS SDK上传文件
-        this._uploadWithSDK(fileBuffer, objectKey, callback);
-      } catch (error) {
-        this._uploadStatus = `错误：${error.message}`;
-      }
+      // 上传数据
+      client.put(objectKey, dataBuffer)
+        .then(result => {
+          this._uploadStatus = '上传成功';
+          console.log('OSS上传结果:', result);
+        })
+        .catch(error => {
+          this._uploadStatus = `上传失败：${error.message}`;
+          console.error('OSS上传错误:', error);
+        });
+    } catch (error) {
+      this._uploadStatus = `错误：${error.message}`;
+      console.error('OSS配置错误:', error);
     }
   }
 
   /**
-   * Upload file using OSS SDK
-   * @param {Buffer} fileBuffer - File buffer
-   * @param {string} objectKey - OSS object key
-   * @param {string} callback - Callback message
+   * Convert base64 data to buffer
+   * @param {string} base64Data - Base64 data string (with or without data URI prefix)
+   * @return {Buffer} Buffer containing the data
    * @private
    */
-  _uploadWithSDK(fileBuffer, objectKey, callback = null) {
-    // 这里需要动态加载阿里云OSS SDK
+  _base64ToBuffer(base64Data) {
     try {
-      const OSS = require('ali-oss');
+      // 移除 data URI 前缀（如果存在）
+      let base64String = base64Data;
+      if (base64Data.includes(',')) {
+        base64String = base64Data.split(',')[1];
+      }
 
-      const client = new OSS({
-        region: this._ossConfig.region,
-        accessKeyId: this._ossConfig.accessKeyId,
-        accessKeySecret: this._ossConfig.accessKeySecret,
-        bucket: this._ossConfig.bucket
-      });
-
-      client.put(objectKey, fileBuffer).then(result => {
-        this._uploadStatus = '上传成功';
-        if (callback) {
-          this.runtime.startHats('event_whenbroadcastreceived', {
-            BROADCAST_OPTION: callback
-          });
-        }
-      }).catch(error => {
-        this._uploadStatus = `上传失败：${error.message}`;
-      });
+      // 使用 Buffer.from 转换 base64 数据
+      return global.Buffer.from(base64String, 'base64');
     } catch (error) {
-      this._uploadStatus = `SDK错误：${error.message}`;
+      throw new Error(`Base64 转换失败：${error.message}`);
     }
   }
+
 }
 
 module.exports = Scratch3OSSBlocks;
